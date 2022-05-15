@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate criterion;
 
-extern crate path_clean;
+extern crate clean_path;
 
 use criterion::black_box;
 use criterion::Criterion;
 
-use path_clean::clean;
+use clean_path::clean;
 
 fn clean_benchmark(c: &mut Criterion) {
     c.bench_function("clean", |b| {

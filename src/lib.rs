@@ -1,5 +1,6 @@
-//! `path-clean` is a Rust port of the the `cleanname` procedure from the Plan 9 C library, and is similar to
-//! [`path.Clean`](https://golang.org/pkg/path/#Clean) from the Go standard library. It works as follows:
+//! `clean-path` is a safe fork of the
+//! [`path-clean`](https://crates.io/crates/path-clean) crate. It
+//! works as follows:
 //!
 //! 1. Reduce multiple slashes to a single slash.
 //! 2. Eliminate `.` path name elements (the current directory).
@@ -7,135 +8,135 @@
 //! 4. Eliminate `..` elements that begin a rooted path, that is, replace `/..` by `/` at the beginning of a path.
 //! 5. Leave intact `..` elements that begin a non-rooted path.
 //!
-//! If the result of this process is an empty string, return the string `"."`, representing the current directory.
+//! If the result of this process is an empty string, return the
+//! string `"."`, representing the current directory.
 //!
-//! It performs this transform lexically, without touching the filesystem. Therefore it doesn't do
-//! any symlink resolution or absolute path resolution. For more information you can see ["Getting Dot-Dot
-//! Right"](https://9p.io/sys/doc/lexnames.html).
+//! It performs this transform lexically, without touching the
+//! filesystem. Therefore it doesn't do any symlink resolution or
+//! absolute path resolution. For more information you can see
+//! ["Getting Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
 //!
-//! For convenience, the [`PathClean`] trait is exposed and comes implemented for [`std::path::PathBuf`].
+//! This functionality is exposed in the [`clean`] function and
+//! [`Clean`] trait implemented for [`std::path::PathBuf`] and
+//! [`std::path::Path`].
 //!
 //! ```rust
-//! use std::path::PathBuf;
-//! use path_clean::{clean, PathClean};
-//! assert_eq!(clean("hello/world/.."), "hello");
+//! use std::path::{Path, PathBuf};
+//! use clean_path::{clean, Clean};
+//!
+//! assert_eq!(clean("foo/../../bar"), PathBuf::from("../bar"));
+//! assert_eq!(Path::new("hello/world/..").clean(), PathBuf::from("hello"));
 //! assert_eq!(
 //!     PathBuf::from("/test/../path/").clean(),
 //!     PathBuf::from("/path")
 //! );
 //! ```
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// The Clean trait implements a `clean` method. It's recommended you use the provided [`clean`]
-/// function.
-pub trait PathClean<T> {
-    fn clean(&self) -> T;
+/// The Clean trait implements the `clean` method.
+pub trait Clean {
+    fn clean(&self) -> PathBuf;
 }
 
-/// PathClean implemented for PathBuf
-impl PathClean<PathBuf> for PathBuf {
+/// Clean implemented for PathBuf
+impl Clean for PathBuf {
     fn clean(&self) -> PathBuf {
-        PathBuf::from(clean(self.to_str().unwrap_or("")))
+        clean(self)
     }
 }
 
-pub fn clean(path: &str) -> String {
-    let out = clean_internal(path.as_bytes());
-    // The code only matches/modifies ascii tokens and leaves the rest of
-    // the bytes as they are, so if the input string is valid utf8 the result
-    // will also be valid utf8.
-    unsafe { String::from_utf8_unchecked(out) }
+/// Clean implemented for PathBuf
+impl Clean for Path {
+    fn clean(&self) -> PathBuf {
+        clean(self)
+    }
 }
 
-/// The core implementation. It performs the following, lexically:
-/// 1. Reduce multiple slashes to a single slash.
-/// 2. Eliminate `.` path name elements (the current directory).
-/// 3. Eliminate `..` path name elements (the parent directory) and the non-`.` non-`..`, element that precedes them.
-/// 4. Eliminate `..` elements that begin a rooted path, that is, replace `/..` by `/` at the beginning of a path.
-/// 5. Leave intact `..` elements that begin a non-rooted path.
-///
-/// If the result of this process is an empty string, return the string `"."`, representing the current directory.
-fn clean_internal(path: &[u8]) -> Vec<u8> {
-    static DOT: u8 = b'.';
-    static SEP: u8 = b'/';
+/**
+Clean the given path to according to a set of rules:
+1. Reduce multiple slashes to a single slash.
+2. Eliminate `.` path name elements (the current directory).
+3. Eliminate `..` path name elements (the parent directory) and the non-`.` non-`..`, element that precedes them.
+4. Eliminate `..` elements that begin a rooted path, that is, replace `/..` by `/` at the beginning of a path.
+5. Leave intact `..` elements that begin a non-rooted path.
 
-    if path.is_empty() {
-        return vec![DOT];
-    }
+If the result of this process is an empty string, return the string `"."`, representing the current directory.
 
-    let rooted = path[0] == SEP;
-    let n = path.len();
+Note that symlinks and absolute paths are not resolved.
 
-    // Invariants:
-    //  - reading from path; r is index of next byte to process.
-    //  - dotdot is index in out where .. must stop, either because it is the
-    //    leading slash or it is a leading ../../.. prefix.
-    //
-    // The go code this function is based on handles already-clean paths without
-    // an allocation, but I haven't done that here because I think it
-    // complicates the return signature too much.
-    let mut out: Vec<u8> = Vec::with_capacity(n);
-    let mut r = 0;
-    let mut dotdot = 0;
+# Example
 
-    if rooted {
-        out.push(SEP);
-        r = 1;
-        dotdot = 1
-    }
+```rust
+# use std::path::PathBuf;
+# use clean_path::{clean, Clean};
+assert_eq!(clean("foo/../../bar"), PathBuf::from("../bar"));
+```
+*/
+pub fn clean<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path = path.as_ref();
+    clean_internal(path)
+}
 
-    while r < n {
-        if path[r] == SEP || path[r] == DOT && (r + 1 == n || path[r + 1] == SEP) {
-            // empty path element || . element: skip
-            r += 1;
-        } else if path[r] == DOT && path[r + 1] == DOT && (r + 2 == n || path[r + 2] == SEP) {
-            // .. element: remove to last separator
-            r += 2;
-            if out.len() > dotdot {
-                // can backtrack, truncate to last separator
-                let mut w = out.len() - 1;
-                while w > dotdot && out[w] != SEP {
-                    w -= 1;
-                }
-                out.truncate(w);
-            } else if !rooted {
-                // cannot backtrack, but not rooted, so append .. element
-                if !out.is_empty() {
-                    out.push(SEP);
-                }
-                out.push(DOT);
-                out.push(DOT);
-                dotdot = out.len();
+/// The core implementation.
+fn clean_internal(path: &Path) -> PathBuf {
+    // based off of github.com/rust-lang/cargo/blob/fede83/src/cargo/util/paths.rs#L61
+    use std::path::Component;
+
+    let mut components = path.components().peekable();
+    let mut cleaned = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    // amount of leading parentdir components in `cleaned`
+    let mut dotdots = 0;
+    // amount of components in `cleaned`
+    // invariant: component_count >= dotdots
+    let mut component_count = 0;
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                cleaned.push(component.as_os_str());
+                component_count += 1;
             }
-        } else {
-            // real path element
-            // add slash if needed
-            if rooted && out.len() != 1 || !rooted && !out.is_empty() {
-                out.push(SEP);
+            Component::CurDir => {}
+            Component::ParentDir if component_count == 1 && cleaned.is_absolute() => {}
+            Component::ParentDir if component_count == dotdots => {
+                cleaned.push("..");
+                dotdots += 1;
+                component_count += 1;
             }
-            while r < n && path[r] != SEP {
-                out.push(path[r]);
-                r += 1;
+            Component::ParentDir => {
+                cleaned.pop();
+                component_count -= 1;
+            }
+            Component::Normal(c) => {
+                cleaned.push(c);
+                component_count += 1;
             }
         }
     }
 
-    // Turn empty string into "."
-    if out.is_empty() {
-        out.push(DOT);
+    if component_count == 0 {
+        cleaned.push(".");
     }
-    out
+
+    cleaned
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{clean, PathClean};
+    use super::{clean, Clean};
     use std::path::PathBuf;
 
     #[test]
     fn test_empty_path_is_current_dir() {
-        assert_eq!(clean(""), ".");
+        assert_eq!(clean(""), PathBuf::from("."));
     }
 
     #[test]
@@ -143,7 +144,13 @@ mod tests {
         let tests = vec![(".", "."), ("..", ".."), ("/", "/")];
 
         for test in tests {
-            assert_eq!(clean(test.0), test.1);
+            assert_eq!(
+                clean(test.0),
+                PathBuf::from(test.1),
+                "clean({}) == {}",
+                test.0,
+                test.1
+            );
         }
     }
 
@@ -164,7 +171,13 @@ mod tests {
         ];
 
         for test in tests {
-            assert_eq!(clean(test.0), test.1);
+            assert_eq!(
+                clean(test.0),
+                PathBuf::from(test.1),
+                "clean({}) == {}",
+                test.0,
+                test.1
+            );
         }
     }
 
@@ -180,7 +193,13 @@ mod tests {
         ];
 
         for test in tests {
-            assert_eq!(clean(test.0), test.1);
+            assert_eq!(
+                clean(test.0),
+                PathBuf::from(test.1),
+                "clean({}) == {}",
+                test.0,
+                test.1
+            );
         }
     }
 
@@ -207,12 +226,18 @@ mod tests {
         ];
 
         for test in tests {
-            assert_eq!(clean(test.0), test.1);
+            assert_eq!(
+                clean(test.0),
+                PathBuf::from(test.1),
+                "clean({}) == {}",
+                test.0,
+                test.1
+            );
         }
     }
 
     #[test]
-    fn test_pathbuf_trait() {
+    fn test_trait() {
         assert_eq!(
             PathBuf::from("/test/../path/").clean(),
             PathBuf::from("/path")
