@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! `clean-path` is a safe fork of the
 //! [`path-clean`](https://crates.io/crates/path-clean) crate. It
 //! works as follows:
