@@ -1,54 +1,74 @@
-# path-clean
+# clean-path
 
 [![crates.io version][1]][2]
 [![build status][3]][4]
 [![docs.rs docs][5]][6]
 [![license][7]][8]
 
+`clean-path` is a safe fork of the
+[`path-clean`](https://crates.io/crates/path-clean) crate.
+
 ## Installation
 
 ```sh
-cargo add path-clean
+cargo add clean-path
 ```
 
 ## Usage
 
 ```rust
-use std::path::PathBuf;
-use path_clean::{clean, PathClean};
-assert_eq!(clean("hello/world/.."), "hello");
+use std::path::{Path, PathBuf};
+use clean_path::{clean, Clean};
+
+assert_eq!(clean("foo/../../bar"), PathBuf::from("../bar"));
+assert_eq!(Path::new("hello/world/..").clean(), PathBuf::from("hello"));
 assert_eq!(
-  PathBuf::from("/test/../path/").clean(),
-  PathBuf::from("/path")
+    PathBuf::from("/test/../path/").clean(),
+    PathBuf::from("/path")
 );
 ```
 
 ## About
 
-`path-clean` is a Rust port of the the `cleanname` procedure from the Plan 9 C library, and is similar to [`path.Clean`](https://golang.org/pkg/path/#Clean) from the Go standard library. It works as follows:
+This fork aims to provide the same utility as
+[`path-clean`](https://crates.io/crates/path-clean), without using unsafe. Additionally, the api
+is improved ([`clean`] takes `AsRef<Path>` instead of just `&str`) and `Clean` is implemented on
+`Path` in addition to just `PathBuf`.
 
-  1. Reduce multiple slashes to a single slash.
-  2. Eliminate `.` path name elements (the current directory).
-  3. Eliminate `..` path name elements (the parent directory) and the non-`.` non-`..`, element that precedes them.
-  4. Eliminate `..` elements that begin a rooted path, that is, replace `/..` by `/` at the beginning of a path.
-  5. Leave intact `..` elements that begin a non-rooted path.
+The main cleaning procedure is implemented using the methods provided by `PathBuf`, thus it should
+bring portability benefits over [`path-clean`](https://crates.io/crates/path-clean) w.r.t. correctly
+handling cross-platform filepaths. However, the current implementation is not highly-optimized, so
+if performance is top-priority, consider using [`path-clean`](https://crates.io/crates/path-clean)
+instead.
 
-If the result of this process is an empty string, return the string `"."`, representing the current directory.
+## Specification
 
-It performs this transform lexically, without touching the filesystem. Therefore it doesn't do any symlink resolution or absolute path resolution. For more information you can see ["Getting Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
+The cleaning works as follows:
+1. Reduce multiple slashes to a single slash.
+2. Eliminate `.` path name elements (the current directory).
+3. Eliminate `..` path name elements (the parent directory) and the non-`.` non-`..`, element that precedes them.
+4. Eliminate `..` elements that begin a rooted path, that is, replace `/..` by `/` at the beginning of a path.
+5. Leave intact `..` elements that begin a non-rooted path.
 
-For convenience, the [`PathClean`] trait is exposed and comes implemented for [`std::path::PathBuf`].
+If the result of this process is an empty string, return the
+string `"."`, representing the current directory.
+
+This transformation is performed lexically, without touching the filesystem. Therefore it doesn't do
+any symlink resolution or absolute path resolution. For more information you can see ["Getting
+Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
+
+This functionality is exposed in the [`clean`] function and [`Clean`] trait implemented for
+[`std::path::PathBuf`] and [`std::path::Path`].
 
 ## License
 [MIT](./LICENSE-MIT) OR [Apache-2.0](./LICENSE-APACHE)
 
 
-[1]: https://img.shields.io/crates/v/path-clean.svg?style=flat-square
-[2]: https://crates.io/crates/path-clean
-[3]: https://img.shields.io/github/workflow/status/danreeves/path-clean/CI?style=flat-square
-[4]: https://github.com/danreeves/path-clean/actions
+[1]: https://img.shields.io/crates/v/clean-path.svg?style=flat-square
+[2]: https://crates.io/crates/clean-path
+[3]: https://img.shields.io/github/workflow/status/foo-jin/clean-path/CI?style=flat-square
+[4]: https://github.com/foo-jin/clean-path/actions
 [5]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square
-[6]: https://docs.rs/path-clean
-[7]: https://img.shields.io/crates/l/path-clean.svg?style=flat-square
+[6]: https://docs.rs/clean-path
+[7]: https://img.shields.io/crates/l/clean-path.svg?style=flat-square
 [8]: #license
-
