@@ -1,8 +1,24 @@
 #![forbid(unsafe_code)]
+
 //! `clean-path` is a safe fork of the
-//! [`path-clean`](https://crates.io/crates/path-clean) crate. It
-//! works as follows:
+//! [`path-clean`](https://crates.io/crates/path-clean) crate.
 //!
+//! # About
+//!
+//! This fork aims to provide the same utility as
+//! [`path-clean`](https://crates.io/crates/path-clean), without using unsafe. Additionally, the api
+//! is improved ([`clean`] takes `AsRef<Path>` instead of just `&str`) and `Clean` is implemented on
+//! `Path` in addition to just `PathBuf`.
+//!
+//! The main cleaning procedure is implemented using the methods provided by `PathBuf`, thus it should
+//! bring portability benefits over [`path-clean`](https://crates.io/crates/path-clean) w.r.t. correctly
+//! handling cross-platform filepaths. However, the current implementation is not highly-optimized, so
+//! if performance is top-priority, consider using [`path-clean`](https://crates.io/crates/path-clean)
+//! instead.
+//!
+//! # Specification
+//!
+//! The cleaning works as follows:
 //! 1. Reduce multiple slashes to a single slash.
 //! 2. Eliminate `.` path name elements (the current directory).
 //! 3. Eliminate `..` path name elements (the parent directory) and the non-`.` non-`..`, element that precedes them.
@@ -12,14 +28,15 @@
 //! If the result of this process is an empty string, return the
 //! string `"."`, representing the current directory.
 //!
-//! It performs this transform lexically, without touching the
-//! filesystem. Therefore it doesn't do any symlink resolution or
-//! absolute path resolution. For more information you can see
-//! ["Getting Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
+//! This transformation is performed lexically, without touching the filesystem. Therefore it doesn't do
+//! any symlink resolution or absolute path resolution. For more information you can see ["Getting
+//! Dot-Dot Right"](https://9p.io/sys/doc/lexnames.html).
 //!
-//! This functionality is exposed in the [`clean`] function and
-//! [`Clean`] trait implemented for [`std::path::PathBuf`] and
-//! [`std::path::Path`].
+//! This functionality is exposed in the [`clean`] function and [`Clean`] trait implemented for
+//! [`std::path::PathBuf`] and [`std::path::Path`].
+//!
+//!
+//! # Example
 //!
 //! ```rust
 //! use std::path::{Path, PathBuf};
