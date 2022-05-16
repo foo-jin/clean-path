@@ -1,7 +1,6 @@
 # clean-path
 
 [![crates.io version][1]][2]
-[![build status][3]][4]
 [![docs.rs docs][5]][6]
 [![license][7]][8]
 
@@ -37,9 +36,14 @@ is improved ([`clean`] takes `AsRef<Path>` instead of just `&str`) and `Clean` i
 
 The main cleaning procedure is implemented using the methods provided by `PathBuf`, thus it should
 bring portability benefits over [`path-clean`](https://crates.io/crates/path-clean) w.r.t. correctly
-handling cross-platform filepaths. However, the current implementation is not highly-optimized, so
-if performance is top-priority, consider using [`path-clean`](https://crates.io/crates/path-clean)
-instead.
+handling cross-platform filepaths.
+
+Additionally, the original implementation in [`path-clean`](https://crates.io/crates/path-clean) is
+rather inscrutible, and as such if being able to inspect and understand the code is important to
+you, this crate provides a more readable implementation.
+
+However, the current implementation is not highly-optimized, so if performance is top-priority,
+consider using [`path-clean`](https://crates.io/crates/path-clean) instead.
 
 ## Specification
 
@@ -65,8 +69,6 @@ This functionality is exposed in the [`clean`] function and [`Clean`] trait impl
 
 
 [1]: https://img.shields.io/crates/v/clean-path.svg?style=flat-square
-[2]: https://crates.io/crates/clean-path
-[3]: https://img.shields.io/github/workflow/status/foo-jin/clean-path/CI?style=flat-square
 [4]: https://github.com/foo-jin/clean-path/actions
 [5]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square
 [6]: https://docs.rs/clean-path
