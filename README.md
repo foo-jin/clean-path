@@ -1,8 +1,8 @@
 # clean-path
 
 [![crates.io version][1]][2]
-[![docs.rs docs][5]][6]
-[![license][7]][8]
+[![docs.rs docs][3]][4]
+[![license][5]][6]
 
 `clean-path` is a safe fork of the
 [`path-clean`](https://crates.io/crates/path-clean) crate.
@@ -69,8 +69,8 @@ This functionality is exposed in the [`clean`] function and [`Clean`] trait impl
 
 
 [1]: https://img.shields.io/crates/v/clean-path.svg?style=flat-square
-[4]: https://github.com/foo-jin/clean-path/actions
-[5]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square
-[6]: https://docs.rs/clean-path
-[7]: https://img.shields.io/crates/l/clean-path.svg?style=flat-square
-[8]: #license
+[2]: https://crates.io/crates/clean-path
+[3]: https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square
+[4]: https://docs.rs/clean-path
+[5]: https://img.shields.io/crates/l/clean-path.svg?style=flat-square
+[6]: #license
